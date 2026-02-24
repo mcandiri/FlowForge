@@ -133,4 +133,4 @@ dotnet test
 
 ## License
 
-[MIT](LICENSE) -- Copyright (c) 2025 Mehmet Can Diri
+[MIT](LICENSE) -- Copyright (c) 2026 Mehmet Can Diri
