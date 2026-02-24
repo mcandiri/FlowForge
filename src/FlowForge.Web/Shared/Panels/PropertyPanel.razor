@@ -1,0 +1,214 @@
+@using FlowForge.Core.Models
+@using FlowForge.Core.Nodes
+@using FlowForge.Web.Services
+@inject CanvasStateService CanvasState
+@inject NodeRegistry NodeRegistry
+@implements IDisposable
+
+<div class="ff-properties">
+    @if (_selectedNode is not null && _definition is not null)
+    {
+        <div class="ff-properties-header">
+            <h3>Properties</h3>
+            <span class="ff-properties-type">@_definition.Name</span>
+        </div>
+
+        <div class="ff-properties-body">
+            <div class="ff-prop-group">
+                <label class="ff-prop-label">Name</label>
+                <input type="text" class="ff-prop-input"
+                       value="@_selectedNode.Name"
+                       @onchange="HandleNameChange" />
+            </div>
+
+            <div class="ff-prop-group">
+                <label class="ff-prop-label">Node ID</label>
+                <span class="ff-prop-readonly">@_selectedNode.Id[..8]...</span>
+            </div>
+
+            <div class="ff-prop-group">
+                <label class="ff-prop-label">Position</label>
+                <span class="ff-prop-readonly">X: @_selectedNode.X, Y: @_selectedNode.Y</span>
+            </div>
+
+            @if (_definition.ConfigFields.Count > 0)
+            {
+                <div class="ff-prop-divider"></div>
+                <h4 class="ff-prop-section-title">Configuration</h4>
+
+                @foreach (var field in _definition.ConfigFields)
+                {
+                    <div class="ff-prop-group">
+                        <label class="ff-prop-label">
+                            @field.Label
+                            @if (field.Required)
+                            {
+                                <span class="ff-prop-required">*</span>
+                            }
+                        </label>
+
+                        @switch (field.Type.ToLowerInvariant())
+                        {
+                            case "string":
+                                <input type="text" class="ff-prop-input"
+                                       value="@GetConfigValue(field.Name)"
+                                       @onchange="e => UpdateConfig(field.Name, e.Value)" />
+                                break;
+
+                            case "number" or "int" or "integer":
+                                <input type="number" class="ff-prop-input"
+                                       value="@GetConfigValue(field.Name)"
+                                       @onchange="e => UpdateConfig(field.Name, ParseNumber(e.Value))" />
+                                break;
+
+                            case "boolean" or "bool":
+                                <label class="ff-prop-toggle">
+                                    <input type="checkbox"
+                                           checked="@GetConfigBool(field.Name)"
+                                           @onchange="e => UpdateConfig(field.Name, e.Value)" />
+                                    <span class="ff-prop-toggle-label">@(GetConfigBool(field.Name) ? "Enabled" : "Disabled")</span>
+                                </label>
+                                break;
+
+                            case "select":
+                                <select class="ff-prop-input"
+                                        value="@GetConfigValue(field.Name)"
+                                        @onchange="e => UpdateConfig(field.Name, e.Value)">
+                                    <option value="">-- Select --</option>
+                                    @foreach (var option in field.Options)
+                                    {
+                                        <option value="@option">@option</option>
+                                    }
+                                </select>
+                                break;
+
+                            case "code" or "text" or "textarea":
+                                <textarea class="ff-prop-textarea"
+                                          rows="4"
+                                          @onchange="e => UpdateConfig(field.Name, e.Value)">@GetConfigValue(field.Name)</textarea>
+                                break;
+
+                            default:
+                                <input type="text" class="ff-prop-input"
+                                       value="@GetConfigValue(field.Name)"
+                                       @onchange="e => UpdateConfig(field.Name, e.Value)" />
+                                break;
+                        }
+                    </div>
+                }
+            }
+
+            <div class="ff-prop-divider"></div>
+
+            <div class="ff-prop-group">
+                <label class="ff-prop-label">Ports</label>
+                <div class="ff-prop-ports">
+                    <div class="ff-prop-port-section">
+                        <span class="ff-prop-port-label">Inputs:</span>
+                        @foreach (var port in _selectedNode.InputPorts)
+                        {
+                            <span class="ff-prop-port-badge ff-port-in">@port.Name</span>
+                        }
+                        @if (_selectedNode.InputPorts.Count == 0)
+                        {
+                            <span class="ff-prop-port-none">None</span>
+                        }
+                    </div>
+                    <div class="ff-prop-port-section">
+                        <span class="ff-prop-port-label">Outputs:</span>
+                        @foreach (var port in _selectedNode.OutputPorts)
+                        {
+                            <span class="ff-prop-port-badge ff-port-out">@port.Name</span>
+                        }
+                        @if (_selectedNode.OutputPorts.Count == 0)
+                        {
+                            <span class="ff-prop-port-none">None</span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="ff-prop-divider"></div>
+
+            <button class="ff-btn ff-btn-danger-outline ff-btn-full"
+                    @onclick="DeleteNode">
+                Delete Node
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="ff-properties-empty">
+            <div class="ff-properties-empty-icon">&#9998;</div>
+            <p>Select a node to view its properties</p>
+        </div>
+    }
+</div>
+
+@code {
+    private FlowNode? _selectedNode;
+    private NodeDefinition? _definition;
+
+    protected override void OnInitialized()
+    {
+        CanvasState.OnStateChanged += HandleStateChanged;
+        RefreshSelection();
+    }
+
+    private void HandleStateChanged()
+    {
+        RefreshSelection();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void RefreshSelection()
+    {
+        _selectedNode = CanvasState.GetSelectedNode();
+        _definition = _selectedNode is not null
+            ? NodeRegistry.GetAllDefinitions().FirstOrDefault(d => d.Type == _selectedNode.Type)
+            : null;
+    }
+
+    private string GetConfigValue(string key)
+    {
+        if (_selectedNode is null) return "";
+        return _selectedNode.Config.GetString(key, "");
+    }
+
+    private bool GetConfigBool(string key)
+    {
+        if (_selectedNode is null) return false;
+        return _selectedNode.Config.GetBool(key, false);
+    }
+
+    private void UpdateConfig(string key, object? value)
+    {
+        if (_selectedNode is null) return;
+        CanvasState.UpdateNodeConfig(_selectedNode.Id, key, value);
+    }
+
+    private void HandleNameChange(ChangeEventArgs e)
+    {
+        if (_selectedNode is null) return;
+        _selectedNode.Name = e.Value?.ToString() ?? _selectedNode.Name;
+    }
+
+    private object? ParseNumber(object? value)
+    {
+        if (value is null) return 0;
+        if (int.TryParse(value.ToString(), out var intVal)) return intVal;
+        if (double.TryParse(value.ToString(), out var dblVal)) return dblVal;
+        return 0;
+    }
+
+    private void DeleteNode()
+    {
+        if (_selectedNode is null) return;
+        CanvasState.RemoveNode(_selectedNode.Id);
+    }
+
+    public void Dispose()
+    {
+        CanvasState.OnStateChanged -= HandleStateChanged;
+    }
+}

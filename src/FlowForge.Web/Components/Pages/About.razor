@@ -1,0 +1,61 @@
+@page "/about"
+
+<PageTitle>FlowForge - About</PageTitle>
+
+<div class="ff-about-page">
+    <div class="ff-about-header">
+        <h1>FlowForge</h1>
+        <p class="ff-about-tagline">Visual Workflow Builder for .NET</p>
+        <a href="/" class="ff-btn ff-btn-secondary">Back to Designer</a>
+    </div>
+
+    <div class="ff-about-content">
+        <section class="ff-about-section">
+            <h2>Architecture</h2>
+            <div class="ff-arch-grid">
+                <div class="ff-arch-card">
+                    <h3>FlowForge.Core</h3>
+                    <p>The engine layer. Contains the workflow execution engine, node registry,
+                       node definitions, models (Workflow, FlowNode, FlowEdge), export interfaces,
+                       and template system. Zero UI dependencies.</p>
+                </div>
+                <div class="ff-arch-card">
+                    <h3>FlowForge.Web</h3>
+                    <p>Blazor Server interactive UI. Provides the visual designer with SVG canvas,
+                       drag-and-drop node palette, property editor, real-time execution visualization,
+                       and export capabilities.</p>
+                </div>
+                <div class="ff-arch-card">
+                    <h3>FlowForge.Nodes</h3>
+                    <p>Built-in node implementations. Action nodes (Log, Delay, HttpRequest, SetVariable),
+                       Control nodes (Condition, ForEach, Parallel), Data nodes (Transform, Filter),
+                       and Trigger nodes (Manual, Schedule).</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="ff-about-section">
+            <h2>Technology Stack</h2>
+            <ul class="ff-tech-list">
+                <li><strong>.NET 8</strong> - Runtime and SDK</li>
+                <li><strong>Blazor Server</strong> - Interactive server-side rendering with SignalR</li>
+                <li><strong>SVG</strong> - Canvas rendering for nodes, edges, and ports</li>
+                <li><strong>CSS Grid</strong> - Responsive three-panel layout</li>
+                <li><strong>JS Interop</strong> - Smooth drag-and-drop and canvas interactions</li>
+            </ul>
+        </section>
+
+        <section class="ff-about-section">
+            <h2>Key Features</h2>
+            <ul class="ff-tech-list">
+                <li>Visual drag-and-drop workflow design</li>
+                <li>Real-time execution with animated node status</li>
+                <li>Node property editing with type-aware fields</li>
+                <li>JSON and C# export</li>
+                <li>Workflow templates</li>
+                <li>Extensible node system via IFlowNode</li>
+                <li>Condition branching, loops, and parallel execution</li>
+            </ul>
+        </section>
+    </div>
+</div>

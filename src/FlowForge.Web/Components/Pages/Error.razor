@@ -1,0 +1,42 @@
+﻿@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>FlowForge - Error</PageTitle>
+
+<div class="ff-about-page">
+    <div class="ff-about-header">
+        <h1 style="color: var(--accent-red);">Error</h1>
+        <p class="ff-about-tagline">An error occurred while processing your request.</p>
+        <a href="/" class="ff-btn ff-btn-secondary">Back to Designer</a>
+    </div>
+
+    @if (ShowRequestId)
+    {
+        <p style="color: var(--text-secondary); margin-top: 16px;">
+            <strong>Request ID:</strong> <code style="color: var(--accent-blue);">@RequestId</code>
+        </p>
+    }
+
+    <div class="ff-about-content" style="margin-top: 24px;">
+        <section class="ff-about-section">
+            <h2>Development Mode</h2>
+            <p style="color: var(--text-secondary); line-height: 1.6;">
+                Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
+                The Development environment should not be enabled for deployed applications.
+                For local debugging, set the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
+                and restart the app.
+            </p>
+        </section>
+    </div>
+</div>
+
+@code{
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

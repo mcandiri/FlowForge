@@ -1,0 +1,38 @@
+@using FlowForge.Core.Engine
+@using FlowForge.Web.Shared.Canvas
+
+<g class="ff-status-badge" transform="translate(@X.ToString(System.Globalization.CultureInfo.InvariantCulture), @Y.ToString(System.Globalization.CultureInfo.InvariantCulture))">
+    <circle r="8" fill="@GetColor()" opacity="0.9" />
+    @if (Status == ExecutionStatus.Running)
+    {
+        <circle r="8" fill="none" stroke="@GetColor()" stroke-width="2" opacity="0.5">
+            <animate attributeName="r" from="8" to="16" dur="1s" repeatCount="indefinite" />
+            <animate attributeName="opacity" from="0.5" to="0" dur="1s" repeatCount="indefinite" />
+        </circle>
+    }
+    <SvgText X="0" Y="4" TextAnchor="middle" Fill="white" FontSize="10" FontWeight="bold" Content="@GetSymbol()" />
+</g>
+
+@code {
+    [Parameter] public ExecutionStatus Status { get; set; }
+    [Parameter] public double X { get; set; }
+    [Parameter] public double Y { get; set; }
+
+    private string GetColor() => Status switch
+    {
+        ExecutionStatus.Running => "#d29922",
+        ExecutionStatus.Success => "#3fb950",
+        ExecutionStatus.Error => "#f85149",
+        ExecutionStatus.Skipped => "#8b949e",
+        _ => "#30363d"
+    };
+
+    private string GetSymbol() => Status switch
+    {
+        ExecutionStatus.Running => "~",
+        ExecutionStatus.Success => "+",
+        ExecutionStatus.Error => "!",
+        ExecutionStatus.Skipped => "-",
+        _ => "?"
+    };
+}

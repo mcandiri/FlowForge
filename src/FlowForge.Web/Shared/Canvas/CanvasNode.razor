@@ -1,0 +1,191 @@
+@using FlowForge.Core.Models
+@using FlowForge.Core.Engine
+@using FlowForge.Web.Shared.Execution
+
+<g class="ff-node @(IsSelected ? "ff-node-selected" : "") @GetStatusClass()"
+   transform="translate(@Node.X.ToString(System.Globalization.CultureInfo.InvariantCulture), @Node.Y.ToString(System.Globalization.CultureInfo.InvariantCulture))"
+   @onmousedown="HandleMouseDown"
+   @onmousedown:stopPropagation="true">
+
+    @* Node body *@
+    <rect width="200"
+          height="@GetNodeHeight()"
+          rx="8" ry="8"
+          class="ff-node-body"
+          fill="#1c2128"
+          stroke="@GetBorderColor()"
+          stroke-width="@(IsSelected ? 2 : 1)" />
+
+    @* Header bar *@
+    <rect width="200" height="36" rx="8" ry="8" class="ff-node-header"
+          fill="@GetHeaderColor()" />
+    <rect width="200" height="18" y="18"
+          fill="@GetHeaderColor()" />
+
+    @* Icon + Name + Subtitle *@
+    <SvgText X="12" Y="24" CssClass="ff-node-icon" Fill="#e6edf3" FontSize="14" Content="@GetIcon()" />
+    <SvgText X="32" Y="24" CssClass="ff-node-name" Fill="#e6edf3" FontSize="13" FontWeight="600" Content="@TruncateName(Node.Name)" />
+    <SvgText X="12" Y="52" CssClass="ff-node-subtitle" Fill="#8b949e" FontSize="11" Content="@GetSubtitle()" />
+
+    @* Input ports (top) *@
+    @for (int i = 0; i < Node.InputPorts.Count; i++)
+    {
+        var port = Node.InputPorts[i];
+        var portCount = Node.InputPorts.Count;
+        var portX = (200.0 / (portCount + 1)) * (i + 1);
+        <CanvasPort Port="port"
+                    Cx="portX"
+                    Cy="0"
+                    OnPortMouseDown="HandlePortMouseDown"
+                    OnPortMouseUp="HandlePortMouseUp" />
+        <SvgText X="@((portX + 10).ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                 Y="-8"
+                 Fill="#8b949e" FontSize="9"
+                 TextAnchor="middle" Content="@port.Name" />
+    }
+
+    @* Output ports (bottom) *@
+    @{
+        var nodeHeight = GetNodeHeight();
+    }
+    @for (int i = 0; i < Node.OutputPorts.Count; i++)
+    {
+        var port = Node.OutputPorts[i];
+        var portCount = Node.OutputPorts.Count;
+        var portX = (200.0 / (portCount + 1)) * (i + 1);
+        <CanvasPort Port="port"
+                    Cx="portX"
+                    Cy="nodeHeight"
+                    OnPortMouseDown="HandlePortMouseDown"
+                    OnPortMouseUp="HandlePortMouseUp" />
+        <SvgText X="@((portX + 10).ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                 Y="@((nodeHeight + 16).ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                 Fill="#8b949e" FontSize="9"
+                 TextAnchor="middle" Content="@port.Name" />
+    }
+
+    @* Execution status badge *@
+    @if (Status != ExecutionStatus.Pending)
+    {
+        <NodeStatusBadge Status="Status" X="180" Y="4" />
+    }
+</g>
+
+@code {
+    [Parameter, EditorRequired]
+    public FlowNode Node { get; set; } = default!;
+
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    [Parameter]
+    public ExecutionStatus Status { get; set; } = ExecutionStatus.Pending;
+
+    [Parameter]
+    public EventCallback<FlowNode> OnNodeMouseDown { get; set; }
+
+    [Parameter]
+    public EventCallback<NodePort> OnPortMouseDown { get; set; }
+
+    [Parameter]
+    public EventCallback<NodePort> OnPortMouseUp { get; set; }
+
+    private double GetNodeHeight()
+    {
+        return 70;
+    }
+
+    private string GetIcon()
+    {
+        return Node.Type.ToLowerInvariant() switch
+        {
+            "logger" or "log" => ">>",
+            "delay" => "~~",
+            "http-request" or "httprequest" or "http_request" => "<>",
+            "set-variable" or "setvariable" or "set_variable" => ":=",
+            "condition" or "if" => "?:",
+            "loop" or "foreach" => "{}",
+            "parallel" => "||",
+            "transform" => "=>",
+            "filter" or "[]" => "[]",
+            "webhook-trigger" or "manual" or "start" => ">|",
+            "schedule" => "@@",
+            "email-sender" or "emailsender" => "@>",
+            "code-block" or "codeblock" => "#_",
+            "database-query" or "databasequery" => "db",
+            "retry" => "<~",
+            _ => "**"
+        };
+    }
+
+    private string TruncateName(string name)
+    {
+        return name.Length > 20 ? name[..17] + "..." : name;
+    }
+
+    private string GetSubtitle()
+    {
+        if (Node.Config.Count == 0) return Node.Type;
+
+        var firstValue = Node.Config.Values.FirstOrDefault();
+        var summary = firstValue?.ToString() ?? "";
+        if (summary.Length > 25) summary = summary[..22] + "...";
+        return string.IsNullOrEmpty(summary) ? Node.Type : summary;
+    }
+
+    private string GetHeaderColor()
+    {
+        return Node.Type.ToLowerInvariant() switch
+        {
+            "logger" or "log" or "delay" or "http-request" or "httprequest" or "set-variable" or "setvariable"
+            or "email-sender" or "emailsender" or "code-block" or "codeblock" or "database-query" or "databasequery"
+                => "#1a3a2a",
+            "condition" or "if" or "loop" or "foreach" or "parallel" or "retry"
+                => "#2a2a1a",
+            "transform" or "filter"
+                => "#1a2a3a",
+            "webhook-trigger" or "manual" or "start" or "schedule"
+                => "#2a1a3a",
+            _ => "#1c2128"
+        };
+    }
+
+    private string GetBorderColor()
+    {
+        if (IsSelected) return "#58a6ff";
+
+        return Status switch
+        {
+            ExecutionStatus.Running => "#d29922",
+            ExecutionStatus.Success => "#3fb950",
+            ExecutionStatus.Error => "#f85149",
+            _ => "#30363d"
+        };
+    }
+
+    private string GetStatusClass()
+    {
+        return Status switch
+        {
+            ExecutionStatus.Running => "ff-node-running",
+            ExecutionStatus.Success => "ff-node-success",
+            ExecutionStatus.Error => "ff-node-error",
+            _ => ""
+        };
+    }
+
+    private async Task HandleMouseDown()
+    {
+        await OnNodeMouseDown.InvokeAsync(Node);
+    }
+
+    private async Task HandlePortMouseDown(NodePort port)
+    {
+        await OnPortMouseDown.InvokeAsync(port);
+    }
+
+    private async Task HandlePortMouseUp(NodePort port)
+    {
+        await OnPortMouseUp.InvokeAsync(port);
+    }
+}

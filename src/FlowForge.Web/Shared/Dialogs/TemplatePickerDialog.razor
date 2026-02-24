@@ -1,0 +1,60 @@
+@using FlowForge.Core.Templates
+@inject ITemplateProvider TemplateProvider
+
+<div class="ff-modal-backdrop" @onclick="Close">
+    <div class="ff-modal ff-modal-lg" @onclick:stopPropagation="true">
+        <div class="ff-modal-header">
+            <h3>Choose a Template</h3>
+            <button class="ff-modal-close" @onclick="Close">&#10005;</button>
+        </div>
+        <div class="ff-modal-body">
+            @if (_templates.Count == 0)
+            {
+                <div class="ff-templates-empty-modal">
+                    <p>No templates available. Register an ITemplateProvider to add templates.</p>
+                </div>
+            }
+            else
+            {
+                <div class="ff-template-picker-grid">
+                    @foreach (var template in _templates)
+                    {
+                        <div class="ff-template-picker-card" @onclick="() => SelectTemplate(template)">
+                            <div class="ff-template-picker-icon">@template.Icon</div>
+                            <h4>@template.Name</h4>
+                            <p>@template.Description</p>
+                            <div class="ff-template-picker-meta">
+                                <span>@template.Workflow.Nodes.Count nodes</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+        <div class="ff-modal-footer">
+            <button class="ff-btn ff-btn-secondary" @onclick="Close">Cancel</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<WorkflowTemplate> OnTemplateSelected { get; set; }
+
+    private IReadOnlyList<WorkflowTemplate> _templates = Array.Empty<WorkflowTemplate>();
+
+    protected override void OnInitialized()
+    {
+        _templates = TemplateProvider.GetTemplates();
+    }
+
+    private async Task SelectTemplate(WorkflowTemplate template)
+    {
+        await OnTemplateSelected.InvokeAsync(template);
+    }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+}

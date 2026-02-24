@@ -1,0 +1,282 @@
+@using FlowForge.Core.Models
+@using FlowForge.Core.Engine
+@using FlowForge.Web.Services
+@using Microsoft.JSInterop
+@inject CanvasStateService CanvasState
+@inject WorkflowExecutionService ExecutionService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="ff-canvas-container" @ref="_containerRef">
+    <svg class="ff-canvas-svg"
+         @onmousedown="HandleCanvasMouseDown"
+         @onmousemove="HandleCanvasMouseMove"
+         @onmouseup="HandleCanvasMouseUp"
+         @onmouseleave="HandleCanvasMouseUp"
+         @onwheel="HandleWheel"
+         @ondblclick="HandleDoubleClick">
+
+        <g transform="translate(@PanXStr, @PanYStr) scale(@ZoomStr)">
+
+            <CanvasGrid />
+
+            @* Render edges *@
+            @foreach (var edge in CanvasState.Edges)
+            {
+                var edgeStatus = GetEdgeStatus(edge);
+                <CanvasEdge Edge="edge"
+                           Nodes="CanvasState.Nodes"
+                           Status="edgeStatus"
+                           IsAnimating="edgeStatus == ExecutionStatus.Running" />
+            }
+
+            @* Temporary wire while connecting *@
+            @if (_isDrawingWire && _wireStartPort is not null)
+            {
+                <line x1="@_wireStartX.ToString(Inv)"
+                      y1="@_wireStartY.ToString(Inv)"
+                      x2="@_wireEndX.ToString(Inv)"
+                      y2="@_wireEndY.ToString(Inv)"
+                      stroke="#58a6ff"
+                      stroke-width="2"
+                      stroke-dasharray="6 4"
+                      opacity="0.8" />
+            }
+
+            @* Render nodes *@
+            @foreach (var node in CanvasState.Nodes)
+            {
+                var nodeStatus = ExecutionService.GetNodeStatus(node.Id);
+                <CanvasNode Node="node"
+                           IsSelected="node.Id == CanvasState.SelectedNodeId"
+                           Status="nodeStatus"
+                           OnNodeMouseDown="HandleNodeMouseDown"
+                           OnPortMouseDown="HandlePortMouseDown"
+                           OnPortMouseUp="HandlePortMouseUp" />
+            }
+        </g>
+    </svg>
+
+    <div class="ff-canvas-controls">
+        <button class="ff-canvas-btn" @onclick="ZoomIn" title="Zoom In">+</button>
+        <span class="ff-canvas-zoom">@((CanvasState.ZoomLevel * 100).ToString("0"))%</span>
+        <button class="ff-canvas-btn" @onclick="ZoomOut" title="Zoom Out">-</button>
+        <button class="ff-canvas-btn" @onclick="ResetView" title="Reset View">R</button>
+    </div>
+</div>
+
+@code {
+    private ElementReference _containerRef;
+    private IJSObjectReference? _jsModule;
+
+    // Drag state
+    private bool _isDraggingNode;
+    private string? _draggedNodeId;
+    private double _dragStartX, _dragStartY;
+    private double _nodeStartX, _nodeStartY;
+    private bool _dragStartCaptured;
+
+    // Pan state
+    private bool _isPanning;
+    private double _panStartMouseX, _panStartMouseY;
+    private double _panStartX, _panStartY;
+
+    // Wire drawing state
+    private bool _isDrawingWire;
+    private NodePort? _wireStartPort;
+    private double _wireStartX, _wireStartY, _wireEndX, _wireEndY;
+
+    private static readonly System.Globalization.CultureInfo Inv = System.Globalization.CultureInfo.InvariantCulture;
+
+    private string PanXStr => CanvasState.PanX.ToString(Inv);
+    private string PanYStr => CanvasState.PanY.ToString(Inv);
+    private string ZoomStr => CanvasState.ZoomLevel.ToString(Inv);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./js/canvas-interop.js");
+            CanvasState.OnStateChanged += HandleStateChanged;
+            ExecutionService.OnStateChanged += HandleStateChanged;
+        }
+    }
+
+    private void HandleStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    // ── Canvas mouse events ──────────────────────────────────
+
+    private void HandleCanvasMouseDown(MouseEventArgs e)
+    {
+        if (_isDrawingWire) return;
+
+        // Middle button or Ctrl+left = pan
+        if (e.Button == 1 || (e.Button == 0 && e.CtrlKey))
+        {
+            _isPanning = true;
+            _panStartMouseX = e.ClientX;
+            _panStartMouseY = e.ClientY;
+            _panStartX = CanvasState.PanX;
+            _panStartY = CanvasState.PanY;
+            return;
+        }
+
+        // Left click on empty canvas = deselect
+        if (e.Button == 0 && !_isDraggingNode)
+        {
+            CanvasState.SelectNode(null);
+        }
+    }
+
+    private void HandleCanvasMouseMove(MouseEventArgs e)
+    {
+        if (_isPanning)
+        {
+            var dx = e.ClientX - _panStartMouseX;
+            var dy = e.ClientY - _panStartMouseY;
+            CanvasState.SetPan(_panStartX + dx, _panStartY + dy);
+            return;
+        }
+
+        if (_isDraggingNode && _draggedNodeId is not null)
+        {
+            if (!_dragStartCaptured)
+            {
+                _dragStartX = e.ClientX;
+                _dragStartY = e.ClientY;
+                _dragStartCaptured = true;
+            }
+            var dx = (e.ClientX - _dragStartX) / CanvasState.ZoomLevel;
+            var dy = (e.ClientY - _dragStartY) / CanvasState.ZoomLevel;
+            var newX = _nodeStartX + dx;
+            var newY = _nodeStartY + dy;
+            CanvasState.MoveNode(_draggedNodeId, newX, newY);
+            return;
+        }
+
+        if (_isDrawingWire)
+        {
+            _wireEndX = (_wireEndX + (e.MovementX / CanvasState.ZoomLevel));
+            _wireEndY = (_wireEndY + (e.MovementY / CanvasState.ZoomLevel));
+            StateHasChanged();
+        }
+    }
+
+    private void HandleCanvasMouseUp(MouseEventArgs e)
+    {
+        _isPanning = false;
+        _isDraggingNode = false;
+        _draggedNodeId = null;
+
+        if (_isDrawingWire)
+        {
+            // Wire drawing cancelled (no port target)
+            _isDrawingWire = false;
+            _wireStartPort = null;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleWheel(WheelEventArgs e)
+    {
+        var delta = e.DeltaY > 0 ? -0.1 : 0.1;
+        CanvasState.SetZoom(CanvasState.ZoomLevel + delta);
+    }
+
+    private void HandleDoubleClick(MouseEventArgs e)
+    {
+        // Double-click on canvas could be used for adding nodes
+    }
+
+    // ── Node mouse events ────────────────────────────────────
+
+    private void HandleNodeMouseDown(FlowNode node)
+    {
+        CanvasState.SelectNode(node.Id);
+        _isDraggingNode = true;
+        _draggedNodeId = node.Id;
+        _nodeStartX = node.X;
+        _nodeStartY = node.Y;
+        // _dragStartX/Y will be captured on the first mouse move
+        _dragStartCaptured = false;
+    }
+
+    // ── Port mouse events ────────────────────────────────────
+
+    private void HandlePortMouseDown(NodePort port)
+    {
+        if (port.Type == PortType.Output)
+        {
+            _isDrawingWire = true;
+            _wireStartPort = port;
+
+            var node = CanvasState.Nodes.FirstOrDefault(n => n.Id == port.NodeId);
+            if (node is not null)
+            {
+                var portIndex = node.OutputPorts.FindIndex(p => p.Id == port.Id);
+                var portCount = Math.Max(node.OutputPorts.Count, 1);
+                _wireStartX = node.X + (200.0 / (portCount + 1)) * (portIndex + 1);
+                _wireStartY = node.Y + 70; // node height
+                _wireEndX = _wireStartX;
+                _wireEndY = _wireStartY;
+            }
+        }
+    }
+
+    private void HandlePortMouseUp(NodePort port)
+    {
+        if (_isDrawingWire && _wireStartPort is not null && port.Type == PortType.Input)
+        {
+            // Create edge from output port to input port
+            CanvasState.AddEdge(
+                _wireStartPort.NodeId, _wireStartPort.Name,
+                port.NodeId, port.Name);
+        }
+
+        _isDrawingWire = false;
+        _wireStartPort = null;
+    }
+
+    // ── Zoom controls ────────────────────────────────────────
+
+    private void ZoomIn() => CanvasState.SetZoom(CanvasState.ZoomLevel + 0.1);
+    private void ZoomOut() => CanvasState.SetZoom(CanvasState.ZoomLevel - 0.1);
+
+    private void ResetView()
+    {
+        CanvasState.SetZoom(1.0);
+        CanvasState.SetPan(0, 0);
+    }
+
+    // ── Edge status helper ───────────────────────────────────
+
+    private ExecutionStatus GetEdgeStatus(FlowEdge edge)
+    {
+        var sourceStatus = ExecutionService.GetNodeStatus(edge.SourceNodeId);
+        var targetStatus = ExecutionService.GetNodeStatus(edge.TargetNodeId);
+
+        if (sourceStatus == ExecutionStatus.Running || targetStatus == ExecutionStatus.Running)
+            return ExecutionStatus.Running;
+        if (sourceStatus == ExecutionStatus.Success && targetStatus == ExecutionStatus.Success)
+            return ExecutionStatus.Success;
+        if (sourceStatus == ExecutionStatus.Error || targetStatus == ExecutionStatus.Error)
+            return ExecutionStatus.Error;
+
+        return ExecutionStatus.Pending;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        CanvasState.OnStateChanged -= HandleStateChanged;
+        ExecutionService.OnStateChanged -= HandleStateChanged;
+
+        if (_jsModule is not null)
+        {
+            await _jsModule.DisposeAsync();
+        }
+    }
+}
