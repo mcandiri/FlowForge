@@ -4,7 +4,7 @@
 
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![CI](https://github.com/mcandiri/FlowForge/actions/workflows/ci.yml/badge.svg)](https://github.com/mcandiri/FlowForge/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-50%2B%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-118%20passing-brightgreen)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
