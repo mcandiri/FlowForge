@@ -118,7 +118,8 @@ FlowForge.sln
 - [ ] Custom node plugin system
 - [ ] Workflow versioning & diff
 - [ ] Parallel branch execution visualisation
-- [ ] Dark mode
+- [ ] Debugging mode with breakpoints
+- [ ] Real database & email integration
 
 ---
 
@@ -132,4 +133,4 @@ dotnet test
 
 ## License
 
-[MIT](LICENSE) -- Copyright (c) 2025 mcandiri
+[MIT](LICENSE) -- Copyright (c) 2025 Mehmet Can Diri
