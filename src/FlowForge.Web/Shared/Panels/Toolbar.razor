@@ -1,0 +1,56 @@
+@using FlowForge.Web.Services
+
+<div class="ff-toolbar">
+    <div class="ff-toolbar-brand">
+        <span class="ff-toolbar-logo">FlowForge</span>
+    </div>
+
+    <div class="ff-toolbar-actions">
+        @if (!IsRunning)
+        {
+            <button class="ff-btn ff-btn-success" @onclick="OnRun" title="Run Workflow">
+                <span class="ff-btn-icon">&#9654;</span> Run
+            </button>
+        }
+        else
+        {
+            <button class="ff-btn ff-btn-danger" @onclick="OnStop" title="Stop Execution">
+                <span class="ff-btn-icon">&#9632;</span> Stop
+            </button>
+        }
+
+        <div class="ff-toolbar-separator"></div>
+
+        <button class="ff-btn ff-btn-secondary" @onclick="OnExportJson" title="Export as JSON">
+            <span class="ff-btn-icon">{ }</span> JSON
+        </button>
+        <button class="ff-btn ff-btn-secondary" @onclick="OnExportCSharp" title="Export as C#">
+            <span class="ff-btn-icon">C#</span> Export
+        </button>
+
+        <div class="ff-toolbar-separator"></div>
+
+        <button class="ff-btn ff-btn-secondary" @onclick="OnLoadTemplate" title="Load Template">
+            <span class="ff-btn-icon">&#9776;</span> Template
+        </button>
+        <button class="ff-btn ff-btn-danger-outline" @onclick="OnClear" title="Clear Canvas">
+            <span class="ff-btn-icon">&#10005;</span> Clear
+        </button>
+    </div>
+
+    <div class="ff-toolbar-nav">
+        <a href="/" class="ff-toolbar-link ff-toolbar-link-active">Designer</a>
+        <a href="/templates" class="ff-toolbar-link">Templates</a>
+        <a href="/about" class="ff-toolbar-link">About</a>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnRun { get; set; }
+    [Parameter] public EventCallback OnStop { get; set; }
+    [Parameter] public EventCallback OnExportJson { get; set; }
+    [Parameter] public EventCallback OnExportCSharp { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+    [Parameter] public EventCallback OnLoadTemplate { get; set; }
+    [Parameter] public bool IsRunning { get; set; }
+}

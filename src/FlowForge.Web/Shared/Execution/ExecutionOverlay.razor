@@ -1,0 +1,21 @@
+@using FlowForge.Core.Engine
+@using FlowForge.Web.Services
+@inject WorkflowExecutionService ExecutionService
+
+@if (ExecutionService.IsRunning)
+{
+    <div class="ff-execution-overlay">
+        <div class="ff-execution-indicator">
+            <div class="ff-execution-spinner"></div>
+            <span>Executing workflow...</span>
+            <span class="ff-execution-count">
+                @ExecutionService.Traces.Count(t => t.Status == ExecutionStatus.Success) / @TotalNodes nodes
+            </span>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int TotalNodes { get; set; }
+}

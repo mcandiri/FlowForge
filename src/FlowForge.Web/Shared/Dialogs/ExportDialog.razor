@@ -1,0 +1,59 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<div class="ff-modal-backdrop" @onclick="Close">
+    <div class="ff-modal" @onclick:stopPropagation="true">
+        <div class="ff-modal-header">
+            <h3>@Title</h3>
+            <button class="ff-modal-close" @onclick="Close">&#10005;</button>
+        </div>
+        <div class="ff-modal-body">
+            <div class="ff-export-content">
+                <pre><code>@Content</code></pre>
+            </div>
+        </div>
+        <div class="ff-modal-footer">
+            <button class="ff-btn ff-btn-primary" @onclick="CopyToClipboard">Copy to Clipboard</button>
+            <button class="ff-btn ff-btn-secondary" @onclick="Close">Close</button>
+            @if (_copied)
+            {
+                <span class="ff-copied-msg">Copied!</span>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public string Content { get; set; } = "";
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private bool _copied;
+
+    private async Task CopyToClipboard()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", Content);
+            _copied = true;
+            StateHasChanged();
+            await Task.Delay(2000);
+            _copied = false;
+            StateHasChanged();
+        }
+        catch
+        {
+            // Clipboard API might not be available
+        }
+    }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+}

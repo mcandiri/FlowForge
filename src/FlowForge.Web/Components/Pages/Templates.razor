@@ -1,0 +1,56 @@
+@page "/templates"
+@rendermode InteractiveServer
+@using FlowForge.Core.Templates
+@using FlowForge.Web.Services
+@inject ITemplateProvider TemplateProvider
+@inject CanvasStateService CanvasState
+@inject NavigationManager Navigation
+
+<PageTitle>FlowForge - Templates</PageTitle>
+
+<div class="ff-templates-page">
+    <div class="ff-templates-header">
+        <h1>Workflow Templates</h1>
+        <p class="ff-templates-subtitle">Choose a template to get started quickly</p>
+        <a href="/" class="ff-btn ff-btn-secondary">Back to Designer</a>
+    </div>
+
+    <div class="ff-templates-grid">
+        @foreach (var template in _templates)
+        {
+            <div class="ff-template-card" @onclick="() => LoadTemplate(template)">
+                <div class="ff-template-icon">@template.Icon</div>
+                <div class="ff-template-info">
+                    <h3>@template.Name</h3>
+                    <p>@template.Description</p>
+                    <div class="ff-template-meta">
+                        <span>@template.Workflow.Nodes.Count nodes</span>
+                        <span>@template.Workflow.Edges.Count connections</span>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (_templates.Count == 0)
+        {
+            <div class="ff-templates-empty">
+                <p>No templates available yet. Templates will be added when template providers are registered.</p>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<WorkflowTemplate> _templates = Array.Empty<WorkflowTemplate>();
+
+    protected override void OnInitialized()
+    {
+        _templates = TemplateProvider.GetTemplates();
+    }
+
+    private void LoadTemplate(WorkflowTemplate template)
+    {
+        CanvasState.LoadWorkflow(template.Workflow);
+        Navigation.NavigateTo("/");
+    }
+}

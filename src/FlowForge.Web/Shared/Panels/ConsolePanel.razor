@@ -1,0 +1,106 @@
+@using FlowForge.Core.Engine
+@using FlowForge.Web.Services
+@inject WorkflowExecutionService ExecutionService
+@implements IDisposable
+
+<div class="ff-console">
+    <div class="ff-console-header">
+        <h3>Console</h3>
+        <div class="ff-console-actions">
+            @if (ExecutionService.IsRunning)
+            {
+                <span class="ff-console-status ff-status-running">Running...</span>
+            }
+            else if (ExecutionService.LastResult is not null)
+            {
+                <span class="ff-console-status @(ExecutionService.LastResult.Success ? "ff-status-success" : "ff-status-error")">
+                    @(ExecutionService.LastResult.Success ? "Completed" : "Failed")
+                    (@ExecutionService.LastResult.TotalDuration.TotalMilliseconds.ToString("0")ms)
+                </span>
+            }
+            <button class="ff-btn-sm" @onclick="ClearConsole" title="Clear Console">Clear</button>
+        </div>
+    </div>
+
+    <div class="ff-console-body">
+        @if (ExecutionService.Traces.Count == 0)
+        {
+            <div class="ff-console-empty">
+                <span>Click Run to execute the workflow. Execution traces will appear here.</span>
+            </div>
+        }
+        else
+        {
+            @foreach (var trace in ExecutionService.Traces)
+            {
+                <div class="ff-console-entry @GetEntryClass(trace)">
+                    <span class="ff-console-time">@trace.Timestamp.ToString("HH:mm:ss.fff")</span>
+                    <span class="ff-console-icon">@GetStatusIcon(trace.Status)</span>
+                    <span class="ff-console-node">@trace.NodeName</span>
+                    <span class="ff-console-msg">@trace.Message</span>
+                    @if (trace.Duration > TimeSpan.Zero)
+                    {
+                        <span class="ff-console-duration">@trace.Duration.TotalMilliseconds.ToString("0")ms</span>
+                    }
+                    @if (!string.IsNullOrEmpty(trace.Error))
+                    {
+                        <div class="ff-console-error">@trace.Error</div>
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        ExecutionService.OnTraceAdded += HandleTraceAdded;
+        ExecutionService.OnStateChanged += HandleStateChanged;
+    }
+
+    private void HandleTraceAdded(ExecutionTrace trace)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ClearConsole()
+    {
+        ExecutionService.ClearTraces();
+    }
+
+    private string GetEntryClass(ExecutionTrace trace)
+    {
+        return trace.Status switch
+        {
+            ExecutionStatus.Running => "ff-entry-running",
+            ExecutionStatus.Success => "ff-entry-success",
+            ExecutionStatus.Error => "ff-entry-error",
+            ExecutionStatus.Skipped => "ff-entry-skipped",
+            _ => "ff-entry-pending"
+        };
+    }
+
+    private string GetStatusIcon(ExecutionStatus status)
+    {
+        return status switch
+        {
+            ExecutionStatus.Running => "~",
+            ExecutionStatus.Success => "+",
+            ExecutionStatus.Error => "!",
+            ExecutionStatus.Skipped => "-",
+            _ => "."
+        };
+    }
+
+    public void Dispose()
+    {
+        ExecutionService.OnTraceAdded -= HandleTraceAdded;
+        ExecutionService.OnStateChanged -= HandleStateChanged;
+    }
+}

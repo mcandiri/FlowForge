@@ -1,0 +1,22 @@
+@* Helper component to render SVG <text> elements, avoiding Razor's <text> directive conflict *@
+@((MarkupString)BuildTextElement())
+
+@code {
+    [Parameter] public string X { get; set; } = "0";
+    [Parameter] public string Y { get; set; } = "0";
+    [Parameter] public string Fill { get; set; } = "#e6edf3";
+    [Parameter] public string FontSize { get; set; } = "12";
+    [Parameter] public string TextAnchor { get; set; } = "";
+    [Parameter] public string FontWeight { get; set; } = "";
+    [Parameter] public string CssClass { get; set; } = "";
+    [Parameter] public string Content { get; set; } = "";
+
+    private string BuildTextElement()
+    {
+        var classAttr = string.IsNullOrEmpty(CssClass) ? "" : $" class=\"{CssClass}\"";
+        var anchorAttr = string.IsNullOrEmpty(TextAnchor) ? "" : $" text-anchor=\"{TextAnchor}\"";
+        var weightAttr = string.IsNullOrEmpty(FontWeight) ? "" : $" font-weight=\"{FontWeight}\"";
+
+        return $"<text x=\"{X}\" y=\"{Y}\" fill=\"{Fill}\" font-size=\"{FontSize}\"{classAttr}{anchorAttr}{weightAttr}>{System.Net.WebUtility.HtmlEncode(Content)}</text>";
+    }
+}

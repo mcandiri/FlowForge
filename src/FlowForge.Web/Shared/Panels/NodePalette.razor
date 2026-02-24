@@ -1,0 +1,129 @@
+@using FlowForge.Core.Models
+@using FlowForge.Core.Nodes
+@using FlowForge.Web.Services
+@inject NodeRegistry NodeRegistry
+@inject CanvasStateService CanvasState
+
+<div class="ff-palette">
+    <div class="ff-palette-header">
+        <h3>Nodes</h3>
+        <input type="text" class="ff-palette-search" placeholder="Search..."
+               @bind="_searchTerm" @bind:event="oninput" />
+    </div>
+
+    <div class="ff-palette-list">
+        @foreach (var group in GetFilteredGroups())
+        {
+            <div class="ff-palette-group">
+                <div class="ff-palette-group-header" @onclick="() => ToggleGroup(group.Key)">
+                    <span class="ff-palette-group-arrow @(IsGroupExpanded(group.Key) ? "expanded" : "")">&#9654;</span>
+                    <span class="ff-palette-category @GetCategoryClass(group.Key)">@group.Key</span>
+                    <span class="ff-palette-count">@group.Count()</span>
+                </div>
+
+                @if (IsGroupExpanded(group.Key))
+                {
+                    @foreach (var def in group)
+                    {
+                        <div class="ff-palette-item"
+                             @onclick="() => AddNodeToCanvas(def)"
+                             @ondblclick="() => AddNodeToCanvas(def)"
+                             title="@def.Description">
+                            <span class="ff-palette-item-icon">@GetIcon(def)</span>
+                            <div class="ff-palette-item-info">
+                                <span class="ff-palette-item-name">@def.Name</span>
+                                <span class="ff-palette-item-desc">@TruncateDesc(def.Description)</span>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string _searchTerm = "";
+    private HashSet<string> _collapsedGroups = new();
+    private double _nextY = 60;
+
+    private IEnumerable<IGrouping<string, NodeDefinition>> GetFilteredGroups()
+    {
+        var definitions = NodeRegistry.GetAllDefinitions();
+
+        if (!string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            definitions = definitions
+                .Where(d => d.Name.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                           d.Type.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                           d.Description.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        return definitions
+            .GroupBy(d => d.Category.ToString())
+            .OrderBy(g => g.Key);
+    }
+
+    private void ToggleGroup(string groupKey)
+    {
+        if (_collapsedGroups.Contains(groupKey))
+            _collapsedGroups.Remove(groupKey);
+        else
+            _collapsedGroups.Add(groupKey);
+    }
+
+    private bool IsGroupExpanded(string groupKey) => !_collapsedGroups.Contains(groupKey);
+
+    private void AddNodeToCanvas(NodeDefinition definition)
+    {
+        // Place nodes in a staggered pattern
+        var nodeCount = CanvasState.Nodes.Count;
+        var x = 300 + (nodeCount % 3) * 250;
+        var y = _nextY;
+        _nextY += 120;
+
+        CanvasState.AddNode(definition.Type, x, y);
+    }
+
+    private string GetIcon(NodeDefinition def)
+    {
+        return def.Type.ToLowerInvariant() switch
+        {
+            "logger" or "log" => ">>",
+            "delay" => "~~",
+            "http-request" or "httprequest" or "http_request" => "<>",
+            "set-variable" or "setvariable" or "set_variable" => ":=",
+            "condition" or "if" => "?:",
+            "loop" or "foreach" => "{}",
+            "parallel" => "||",
+            "transform" => "=>",
+            "filter" => "[]",
+            "webhook-trigger" or "manual" or "start" => ">|",
+            "schedule" => "@@",
+            "email-sender" or "emailsender" => "@>",
+            "code-block" or "codeblock" => "#_",
+            "database-query" or "databasequery" => "db",
+            "retry" => "<~",
+            _ => "**"
+        };
+    }
+
+    private string TruncateDesc(string desc)
+    {
+        return desc.Length > 40 ? desc[..37] + "..." : desc;
+    }
+
+    private string GetCategoryClass(string category)
+    {
+        return category.ToLowerInvariant() switch
+        {
+            "action" => "cat-action",
+            "control" => "cat-control",
+            "data" => "cat-data",
+            "trigger" => "cat-trigger",
+            "integration" => "cat-integration",
+            _ => ""
+        };
+    }
+}

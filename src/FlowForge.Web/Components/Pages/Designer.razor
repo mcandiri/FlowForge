@@ -1,0 +1,117 @@
+@page "/"
+@rendermode InteractiveServer
+@using FlowForge.Web.Services
+@using FlowForge.Web.Shared.Panels
+@using FlowForge.Web.Shared.Canvas
+@using FlowForge.Web.Shared.Dialogs
+@inject CanvasStateService CanvasState
+@inject WorkflowExecutionService ExecutionService
+@inject ExportService ExportService
+@implements IDisposable
+
+<PageTitle>FlowForge Designer</PageTitle>
+
+<div class="ff-designer">
+    <Toolbar OnRun="HandleRun"
+             OnStop="HandleStop"
+             OnExportJson="HandleExportJson"
+             OnExportCSharp="HandleExportCSharp"
+             OnClear="HandleClear"
+             OnLoadTemplate="HandleLoadTemplate"
+             IsRunning="ExecutionService.IsRunning" />
+
+    <div class="ff-workspace">
+        <NodePalette />
+
+        <div class="ff-canvas-area">
+            <WorkflowCanvas />
+        </div>
+
+        <PropertyPanel />
+    </div>
+
+    <ConsolePanel />
+</div>
+
+@if (_showExportDialog)
+{
+    <ExportDialog Title="@_exportTitle"
+                  Content="@_exportContent"
+                  OnClose="CloseExportDialog" />
+}
+
+@if (_showTemplatePicker)
+{
+    <TemplatePickerDialog OnClose="CloseTemplatePicker"
+                          OnTemplateSelected="HandleTemplateSelected" />
+}
+
+@code {
+    private bool _showExportDialog;
+    private string _exportTitle = "";
+    private string _exportContent = "";
+    private bool _showTemplatePicker;
+
+    protected override void OnInitialized()
+    {
+        CanvasState.OnStateChanged += StateHasChanged;
+        ExecutionService.OnStateChanged += StateHasChanged;
+    }
+
+    private async Task HandleRun()
+    {
+        await ExecutionService.ExecuteAsync();
+    }
+
+    private void HandleStop()
+    {
+        ExecutionService.Stop();
+    }
+
+    private void HandleExportJson()
+    {
+        _exportTitle = "Export JSON";
+        _exportContent = ExportService.Export("json");
+        _showExportDialog = true;
+    }
+
+    private void HandleExportCSharp()
+    {
+        _exportTitle = "Export C#";
+        _exportContent = ExportService.Export("csharp");
+        _showExportDialog = true;
+    }
+
+    private void HandleClear()
+    {
+        CanvasState.Clear();
+        ExecutionService.ClearTraces();
+    }
+
+    private void HandleLoadTemplate()
+    {
+        _showTemplatePicker = true;
+    }
+
+    private void HandleTemplateSelected(FlowForge.Core.Templates.WorkflowTemplate template)
+    {
+        CanvasState.LoadWorkflow(template.Workflow);
+        _showTemplatePicker = false;
+    }
+
+    private void CloseExportDialog()
+    {
+        _showExportDialog = false;
+    }
+
+    private void CloseTemplatePicker()
+    {
+        _showTemplatePicker = false;
+    }
+
+    public void Dispose()
+    {
+        CanvasState.OnStateChanged -= StateHasChanged;
+        ExecutionService.OnStateChanged -= StateHasChanged;
+    }
+}

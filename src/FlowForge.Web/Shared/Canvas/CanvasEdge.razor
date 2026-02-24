@@ -1,0 +1,92 @@
+@using FlowForge.Core.Models
+@using FlowForge.Core.Engine
+
+<g class="ff-edge @GetAnimationClass()">
+    <path d="@GetPath()"
+          fill="none"
+          stroke="@GetColor()"
+          stroke-width="2"
+          class="ff-edge-path" />
+    @if (IsAnimating)
+    {
+        <circle r="4" fill="@GetColor()" class="ff-edge-dot">
+            <animateMotion dur="1s" repeatCount="indefinite" path="@GetPath()" />
+        </circle>
+        <circle r="4" fill="@GetColor()" class="ff-edge-dot" opacity="0.5">
+            <animateMotion dur="1s" repeatCount="indefinite" path="@GetPath()" begin="0.5s" />
+        </circle>
+    }
+</g>
+
+@code {
+    [Parameter, EditorRequired]
+    public FlowEdge Edge { get; set; } = default!;
+
+    [Parameter]
+    public List<FlowNode> Nodes { get; set; } = new();
+
+    [Parameter]
+    public ExecutionStatus Status { get; set; } = ExecutionStatus.Pending;
+
+    [Parameter]
+    public bool IsAnimating { get; set; }
+
+    private const double NodeWidth = 200;
+    private const double NodeHeight = 70; // Must match CanvasNode.GetNodeHeight()
+
+    private string GetPath()
+    {
+        var sourceNode = Nodes.FirstOrDefault(n => n.Id == Edge.SourceNodeId);
+        var targetNode = Nodes.FirstOrDefault(n => n.Id == Edge.TargetNodeId);
+
+        if (sourceNode is null || targetNode is null)
+            return "";
+
+        // Calculate source port position (output ports on bottom of node)
+        var sourcePortIndex = sourceNode.OutputPorts
+            .FindIndex(p => p.Name == Edge.SourcePortName);
+        if (sourcePortIndex < 0) sourcePortIndex = 0;
+
+        var sourcePortCount = Math.Max(sourceNode.OutputPorts.Count, 1);
+        var sourcePortX = sourceNode.X + (NodeWidth / (sourcePortCount + 1)) * (sourcePortIndex + 1);
+        var sourcePortY = sourceNode.Y + NodeHeight;
+
+        // Calculate target port position (input ports on top of node)
+        var targetPortIndex = targetNode.InputPorts
+            .FindIndex(p => p.Name == Edge.TargetPortName);
+        if (targetPortIndex < 0) targetPortIndex = 0;
+
+        var targetPortCount = Math.Max(targetNode.InputPorts.Count, 1);
+        var targetPortX = targetNode.X + (NodeWidth / (targetPortCount + 1)) * (targetPortIndex + 1);
+        var targetPortY = targetNode.Y;
+
+        // Bezier curve control points
+        var dy = Math.Abs(targetPortY - sourcePortY);
+        var controlOffset = Math.Max(50, dy * 0.5);
+
+        var sx = sourcePortX.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var sy = sourcePortY.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var tx = targetPortX.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var ty = targetPortY.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var c1y = (sourcePortY + controlOffset).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var c2y = (targetPortY - controlOffset).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        return $"M {sx} {sy} C {sx} {c1y}, {tx} {c2y}, {tx} {ty}";
+    }
+
+    private string GetColor()
+    {
+        return Status switch
+        {
+            ExecutionStatus.Running => "#d29922",
+            ExecutionStatus.Success => "#3fb950",
+            ExecutionStatus.Error => "#f85149",
+            _ => "#30363d"
+        };
+    }
+
+    private string GetAnimationClass()
+    {
+        return IsAnimating ? "ff-edge-animating" : "";
+    }
+}

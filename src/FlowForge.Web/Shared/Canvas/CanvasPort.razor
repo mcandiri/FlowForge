@@ -1,0 +1,54 @@
+@using FlowForge.Core.Models
+
+<g class="ff-port @(_isOutput ? "ff-port-output" : "ff-port-input")"
+   transform="translate(@Cx.ToString(System.Globalization.CultureInfo.InvariantCulture), @Cy.ToString(System.Globalization.CultureInfo.InvariantCulture))">
+    <circle r="6"
+            class="ff-port-circle"
+            fill="@GetPortColor()"
+            stroke="@GetPortStroke()"
+            stroke-width="2"
+            @onmousedown="HandleMouseDown"
+            @onmousedown:stopPropagation="true"
+            @onmouseup="HandleMouseUp"
+            @onmouseup:stopPropagation="true" />
+    <title>@Port.Name</title>
+</g>
+
+@code {
+    [Parameter, EditorRequired]
+    public NodePort Port { get; set; } = default!;
+
+    [Parameter]
+    public double Cx { get; set; }
+
+    [Parameter]
+    public double Cy { get; set; }
+
+    [Parameter]
+    public EventCallback<NodePort> OnPortMouseDown { get; set; }
+
+    [Parameter]
+    public EventCallback<NodePort> OnPortMouseUp { get; set; }
+
+    private bool _isOutput => Port.Type == PortType.Output;
+
+    private string GetPortColor()
+    {
+        return _isOutput ? "#1c2128" : "#1c2128";
+    }
+
+    private string GetPortStroke()
+    {
+        return _isOutput ? "#3fb950" : "#58a6ff";
+    }
+
+    private async Task HandleMouseDown()
+    {
+        await OnPortMouseDown.InvokeAsync(Port);
+    }
+
+    private async Task HandleMouseUp()
+    {
+        await OnPortMouseUp.InvokeAsync(Port);
+    }
+}
