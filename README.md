@@ -34,6 +34,18 @@ Drag nodes onto the canvas, wire them together, hit **Run**, and watch the execu
 
 ---
 
+## Limitations
+
+- **Demo mode only** — HTTP requests, emails, and database queries are mocked. FlowForge demonstrates the visual workflow paradigm, not production integrations.
+
+- **No persistence** — workflows live in memory during the session. JSON export/import is the save mechanism.
+
+- **No authentication** — this is a single-user tool, not a multi-tenant platform.
+
+- **Code Block node uses Roslyn scripting** — powerful but adds cold-start latency on first execution.
+
+---
+
 ## Node Types
 
 | Icon | Node | Category | Description |
@@ -88,7 +100,7 @@ FlowForge.sln
 
 ## Born From Production
 
-> *"We needed an internal tool to let non-developers build data pipelines and approval workflows without writing code every time. FlowForge started as that tool -- and grew into something we think others can use too."*
+> Started as an internal tool to let non-developers define simple data pipelines without filing a ticket for every new integration. The visual canvas made it easier to discuss workflow logic in meetings than reading through nested if-else chains in code.
 
 ---
 
@@ -98,9 +110,9 @@ FlowForge.sln
 |---|---|---|---|
 | **Target** | .NET developers & small teams | Large enterprises | Non-technical users |
 | **Deployment** | Self-hosted, single binary | Cloud / on-prem clusters | SaaS only |
-| **Customisation** | Add C# nodes in minutes | XML/BPMN config files | Limited plugins |
+| **Customisation** | Add C# nodes by implementing `IFlowNode` | XML/BPMN config files | Limited plugins |
 | **Cost** | Free & open source | $$$$ per seat | $$$ per month |
-| **Overhead** | Zero external dependencies | Message brokers, databases | Vendor lock-in |
+| **Overhead** | No external dependencies beyond .NET runtime | Message brokers, databases | Vendor lock-in |
 
 ---
 
